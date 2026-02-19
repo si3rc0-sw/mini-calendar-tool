@@ -7,7 +7,7 @@ import winreg
 
 _SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".mini-calendar-settings.json")
 
-_DEFAULTS = {"months_before": 1, "months_after": 1}
+_DEFAULTS = {"months_before": 1, "months_after": 1, "window_width": None, "window_height": None}
 
 
 def load_settings() -> dict:
@@ -16,9 +16,12 @@ def load_settings() -> dict:
     try:
         with open(_SETTINGS_PATH, "r", encoding="utf-8") as f:
             stored = json.load(f)
-        for key in _DEFAULTS:
+        for key in ("months_before", "months_after"):
             if key in stored and isinstance(stored[key], int):
                 settings[key] = max(0, min(6, stored[key]))
+        for key in ("window_width", "window_height"):
+            if key in stored and isinstance(stored[key], int):
+                settings[key] = stored[key]
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
     return settings
