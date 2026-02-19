@@ -2,7 +2,7 @@
 
 A lightweight Windows system-tray calendar that shows ISO week numbers, supports drag-to-select date ranges, and stays always on top.
 
-![Screenshot](screenshot.png)
+![Screenshot](Printscreen/mini-calendar.png)
 
 ## Features
 
