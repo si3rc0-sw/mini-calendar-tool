@@ -2,3 +2,5 @@ build/
 dist/
 *.spec
 __pycache__/
+.claude/
+icon_preview*.png

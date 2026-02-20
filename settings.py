@@ -7,7 +7,14 @@ import winreg
 
 _SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".mini-calendar-settings.json")
 
-_DEFAULTS = {"months_before": 1, "months_after": 1, "window_width": None, "window_height": None}
+_DEFAULTS = {
+    "months_before": 1,
+    "months_after": 1,
+    "window_width": None,
+    "window_height": None,
+    "holidays": [],
+    "holiday_colors": {"CH": "#FF0000", "DE": "#FFD700", "CN": "#4CAF50"},
+}
 
 
 def load_settings() -> dict:
@@ -22,6 +29,10 @@ def load_settings() -> dict:
         for key in ("window_width", "window_height"):
             if key in stored and isinstance(stored[key], int):
                 settings[key] = stored[key]
+        if "holidays" in stored and isinstance(stored["holidays"], list):
+            settings["holidays"] = [k for k in stored["holidays"] if isinstance(k, str)]
+        if "holiday_colors" in stored and isinstance(stored["holiday_colors"], dict):
+            settings["holiday_colors"] = dict(stored["holiday_colors"])
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
     return settings
