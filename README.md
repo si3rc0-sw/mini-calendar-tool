@@ -1,16 +1,19 @@
 # Mini Calendar Tool
 
-A lightweight Windows system-tray calendar that shows ISO week numbers, supports drag-to-select date ranges, and stays always on top.
+A lightweight Windows system-tray calendar with dark mode, ISO week numbers, holiday indicators, drag-to-select date ranges, and auto-fit multi-month view.
 
 ![Screenshot](Printscreen/mini-calendar.png)
 
 ## Features
 
+- **Dark / Light mode** — full theme toggle via Settings, persisted across sessions
 - **System tray icon** displaying the current ISO week number
-- **Multi-month view** with configurable months before/after
-- **ISO week numbers** alongside each week row
+- **Multi-month view** — auto-fits months to window size when resizing
+- **ISO week numbers** (CW) alongside each week row
+- **Holidays** — selectable per country (Switzerland, Germany, China) with customizable colors and multi-color stripe indicators
 - **Drag-to-select** date ranges with day/week count in the footer
-- **Weekend highlighting** (Sat/Sun in red)
+- **Weekend highlighting** (Sat/Sun in red / dark-mode adjusted)
+- **Navigation** — `◀`/`▶` month, `◀◀`/`▶▶` page, `◀◀◀`/`▶▶▶` year
 - **Start with Windows** option via registry autostart
 - **Keyboard:** Escape clears selection, second Escape hides the window
 
@@ -33,7 +36,7 @@ Use `pythonw main.py` to run without a console window.
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed --name MiniCalendar main.py
+pyinstaller --onefile --noconsole --name MiniCalendar main.py
 ```
 
 The output will be in `dist/MiniCalendar.exe`.
@@ -42,18 +45,23 @@ The output will be in `dist/MiniCalendar.exe`.
 
 - **Left-click** the tray icon to toggle the calendar
 - **Right-click** the tray icon for Settings / Exit
-- **Navigate** months with the arrow buttons or jump to today
+- **Navigate** months with `◀`/`▶`, pages with `◀◀`/`▶▶`, years with `◀◀◀`/`▶▶▶`
 - **Drag** across days to select a date range and see the duration
+- **Resize** the window to show more months in a grid layout
 
 ## Settings
 
 | Option | Description |
 |---|---|
-| Months before | Number of months shown before the current month (0-6) |
-| Months after | Number of months shown after the current month (0-6) |
+| Dark mode | Switch between dark and light theme |
 | Start with Windows | Launch automatically on Windows login |
+| Holidays | Enable/disable holidays per country with color picker |
 
 ## Requirements
 
 - Windows 10/11
 - Python 3.10+ (when running from source)
+
+## License
+
+[MIT](LICENSE)

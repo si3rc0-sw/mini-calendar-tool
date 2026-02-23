@@ -633,7 +633,16 @@ class CalendarWindow:
                 cell.create_rectangle(0, y1, w, y2, fill=c, outline="")
 
         if text:
-            cell.create_text(w // 2, h // 2, text=text, fill=fg, font=font)
+            cx, cy = w // 2, h // 2
+            if len(bg_colors) > 1:
+                # Outline for readability on multi-colour stripes
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        if dx or dy:
+                            cell.create_text(
+                                cx + dx, cy + dy, text=text,
+                                fill="black", font=font)
+            cell.create_text(cx, cy, text=text, fill=fg, font=font)
         cell.configure(cursor=cursor)
 
     # ------------------------------------------------------------------
