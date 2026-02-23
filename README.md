@@ -2,7 +2,7 @@
 
 A lightweight Windows system-tray calendar with dark mode, ISO week numbers, holiday indicators, drag-to-select date ranges, and auto-fit multi-month view.
 
-<img src="Printscreen/mini-calendar.png" width="300">
+<img src="Printscreen/mini-calendar-light.png" width="300"> <img src="Printscreen/mini-calendar.png" width="300">
 
 ## Features
 
