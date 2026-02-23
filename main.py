@@ -30,8 +30,12 @@ def main() -> None:
     def on_settings() -> None:
         cal_win.root.after(0, cal_win.open_settings)
 
+    def on_about() -> None:
+        cal_win.root.after(0, cal_win.open_about)
+
     icon_image = create_icon_image()
-    tray = create_tray(icon_image, on_show, on_exit, on_settings=on_settings)
+    tray = create_tray(icon_image, on_show, on_exit,
+                       on_settings=on_settings, on_about=on_about)
 
     # Run pystray in a daemon thread so it doesn't block tkinter
     tray_thread = threading.Thread(target=tray.run, daemon=True)

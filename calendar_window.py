@@ -20,7 +20,7 @@ from tkinter import colorchooser
 from holidays import COUNTRIES, holidays_by_country, holidays_for_year
 from settings import load_settings, save_settings, get_autostart, set_autostart
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 # Theme colour dictionaries
 THEMES = {
@@ -687,6 +687,40 @@ class CalendarWindow:
             self._update_highlight()
         else:
             self.hide()
+
+    # ------------------------------------------------------------------
+    # About dialog
+    # ------------------------------------------------------------------
+    def open_about(self) -> None:
+        import webbrowser
+        dlg = tk.Toplevel(self.root)
+        dlg.title("About")
+        dlg.resizable(False, False)
+        dlg.attributes("-topmost", True)
+        dlg.grab_set()
+
+        frame = tk.Frame(dlg, padx=20, pady=16)
+        frame.pack()
+
+        tk.Label(frame, text="Mini Calendar", font=self.font_header).pack()
+        tk.Label(frame, text=f"Version {VERSION}", font=self.font_normal,
+                 fg="#888888").pack(pady=(2, 8))
+
+        tk.Label(frame, text="A lightweight Windows system-tray calendar\n"
+                 "with dark mode, holidays, and ISO week numbers.",
+                 font=self.font_normal, justify="center").pack(pady=(0, 8))
+
+        tk.Label(frame, text="MIT License + Commons Clause", font=self.font_wn,
+                 fg="#888888").pack()
+
+        link = tk.Label(frame, text="github.com/si3rc0-sw/mini-calendar-tool",
+                        font=self.font_normal, fg=self.tc("accent"),
+                        cursor="hand2")
+        link.pack(pady=(4, 8))
+        link.bind("<Button-1>", lambda _e: webbrowser.open(
+            "https://github.com/si3rc0-sw/mini-calendar-tool"))
+
+        tk.Button(frame, text="OK", width=8, command=dlg.destroy).pack()
 
     # ------------------------------------------------------------------
     # Settings dialog

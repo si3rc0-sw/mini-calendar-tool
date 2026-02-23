@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.0
+
+### Added
+- **About dialog** — accessible via tray menu, shows version, description, license, and clickable GitHub link
+- **"Check for Updates"** tray menu entry — opens GitHub Releases page in the browser
+- **Text outline** on multi-holiday days — black outline around day numbers on striped color backgrounds for better readability
+
+### Changed
+- **License** — changed from MIT to MIT + Commons Clause (free to use/modify/share, commercial sale not permitted)
+- **README** — updated with light + dark screenshots side by side, new features documented
+
 ## v1.3.0
 
 ### Added

@@ -64,4 +64,4 @@ The output will be in `dist/MiniCalendar.exe`.
 
 ## License
 
-[MIT](LICENSE)
+[MIT + Commons Clause](LICENSE) — free to use, modify, and share; commercial sale is not permitted.
