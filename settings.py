@@ -8,8 +8,7 @@ import winreg
 _SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".mini-calendar-settings.json")
 
 _DEFAULTS = {
-    "months_before": 1,
-    "months_after": 1,
+    "dark_mode": False,
     "window_width": None,
     "window_height": None,
     "holidays": [],
@@ -23,9 +22,8 @@ def load_settings() -> dict:
     try:
         with open(_SETTINGS_PATH, "r", encoding="utf-8") as f:
             stored = json.load(f)
-        for key in ("months_before", "months_after"):
-            if key in stored and isinstance(stored[key], int):
-                settings[key] = max(0, min(6, stored[key]))
+        if "dark_mode" in stored and isinstance(stored["dark_mode"], bool):
+            settings["dark_mode"] = stored["dark_mode"]
         for key in ("window_width", "window_height"):
             if key in stored and isinstance(stored[key], int):
                 settings[key] = stored[key]

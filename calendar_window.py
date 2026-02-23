@@ -20,22 +20,65 @@ from tkinter import colorchooser
 from holidays import COUNTRIES, holidays_by_country, holidays_for_year
 from settings import load_settings, save_settings, get_autostart, set_autostart
 
-# Colours
-ACCENT = "#0078D4"
-SEL_BG = "#B3D7F2"
-HEADER_BG = "#F3F3F3"
-GRID_BG = "white"
-WN_FG = "#888888"
+VERSION = "1.3.0"
+
+# Theme colour dictionaries
+THEMES = {
+    "light": {
+        "accent":      "#0078D4",
+        "sel_bg":      "#B3D7F2",
+        "header_bg":   "#F3F3F3",
+        "grid_bg":     "white",
+        "wn_fg":       "#888888",
+        "header_fg":   "#333333",
+        "weekend_fg":  "#CC0000",
+        "day_fg":      "black",
+        "footer_fg":   "#555555",
+        "tooltip_bg":  "#FFFFE0",
+        "tooltip_fg":  "black",
+        "today_fg":    "white",
+        "sel_fg":      "black",
+        "border":      "#E0E0E0",
+        "btn_fg":      "#333333",
+        "close_fg":    "#666666",
+        "close_hover": "#E81123",
+    },
+    "dark": {
+        "accent":      "#4DA6FF",
+        "sel_bg":      "#2A4A6B",
+        "header_bg":   "#2D2D2D",
+        "grid_bg":     "#1E1E1E",
+        "wn_fg":       "#777777",
+        "header_fg":   "#E0E0E0",
+        "weekend_fg":  "#FF6B6B",
+        "day_fg":      "#E0E0E0",
+        "footer_fg":   "#AAAAAA",
+        "tooltip_bg":  "#3C3C3C",
+        "tooltip_fg":  "#E0E0E0",
+        "today_fg":    "white",
+        "sel_fg":      "white",
+        "border":      "#444444",
+        "btn_fg":      "#E0E0E0",
+        "close_fg":    "#AAAAAA",
+        "close_hover": "#E81123",
+    },
+}
 
 
 class _ToolTip:
     """Lightweight shared tooltip for holiday labels."""
 
-    __slots__ = ("_root", "_tw")
+    __slots__ = ("_root", "_tw", "_bg", "_fg")
 
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: tk.Tk, bg: str, fg: str) -> None:
         self._root = root
         self._tw: tk.Toplevel | None = None
+        self._bg = bg
+        self._fg = fg
+
+    def update_colors(self, bg: str, fg: str) -> None:
+        self._bg = bg
+        self._fg = fg
 
     def show(self, widget: tk.Widget, text: str) -> None:
         self.hide()
@@ -43,7 +86,7 @@ class _ToolTip:
         tw.wm_overrideredirect(True)
         tw.wm_attributes("-topmost", True)
         lbl = tk.Label(
-            tw, text=text, bg="#FFFFE0", fg="black",
+            tw, text=text, bg=self._bg, fg=self._fg,
             relief="solid", borderwidth=1, padx=6, pady=3, justify="left",
         )
         lbl.pack()
@@ -64,26 +107,29 @@ class _MonthPanel:
     __slots__ = ("frame", "header", "wk_header", "day_headers",
                  "week_nums", "day_cells")
 
-    def __init__(self, parent: tk.Frame, fonts: dict,
+    def __init__(self, parent: tk.Frame, fonts: dict, theme: dict,
                  on_press, on_motion, on_release,
                  on_enter=None, on_leave=None) -> None:
-        self.frame = tk.Frame(parent, bg=GRID_BG)
+        self.frame = tk.Frame(parent, bg=theme["grid_bg"])
 
         self.header = tk.Label(
-            self.frame, font=fonts["header"], bg=HEADER_BG, fg="#333333",
+            self.frame, font=fonts["header"],
+            bg=theme["header_bg"], fg=theme["header_fg"],
         )
         self.header.grid(row=0, column=0, columnspan=8, sticky="we", pady=(0, 2))
 
         self.wk_header = tk.Label(
-            self.frame, text="Wk", font=fonts["bold"], bg=GRID_BG, fg=WN_FG, width=3,
+            self.frame, text="CW", font=fonts["bold"],
+            bg=theme["grid_bg"], fg=theme["wn_fg"], width=3,
         )
         self.wk_header.grid(row=1, column=0)
 
         self.day_headers: list[tk.Label] = []
         for col, abbr in enumerate(DAY_ABBR):
-            fg = "#CC0000" if col >= 5 else "#333333"
+            fg = theme["weekend_fg"] if col >= 5 else theme["header_fg"]
             lbl = tk.Label(
-                self.frame, text=abbr, font=fonts["bold"], bg=GRID_BG, fg=fg, width=3,
+                self.frame, text=abbr, font=fonts["bold"],
+                bg=theme["grid_bg"], fg=fg, width=3,
             )
             lbl.grid(row=1, column=col + 1)
             self.day_headers.append(lbl)
@@ -97,7 +143,8 @@ class _MonthPanel:
         for r in range(6):  # max 6 weeks
             grid_row = r + 2
             wn = tk.Label(
-                self.frame, font=fonts["wn"], bg=GRID_BG, fg=WN_FG, width=3,
+                self.frame, font=fonts["wn"],
+                bg=theme["grid_bg"], fg=theme["wn_fg"], width=3,
             )
             wn.grid(row=grid_row, column=0)
             self.week_nums.append(wn)
@@ -106,7 +153,7 @@ class _MonthPanel:
             for c in range(7):
                 cell = tk.Canvas(
                     self.frame, width=_cell_w, height=_cell_h,
-                    bg=GRID_BG, highlightthickness=0, borderwidth=0,
+                    bg=theme["grid_bg"], highlightthickness=0, borderwidth=0,
                 )
                 cell.grid(row=grid_row, column=c + 1)
                 # Bind drag events once — handler checks _widget_dates
@@ -128,7 +175,6 @@ class CalendarWindow:
         self.root = tk.Tk()
         self.root.title(self._title())
         self.root.resizable(True, True)
-        self.root.configure(bg=GRID_BG)
 
         self.root.attributes("-toolwindow", True)
         self.root.attributes("-topmost", True)
@@ -136,8 +182,10 @@ class CalendarWindow:
         self._setup_fonts()
 
         settings = load_settings()
-        self.months_before: int = settings["months_before"]
-        self.months_after: int = settings["months_after"]
+        self._theme = THEMES["dark" if settings.get("dark_mode") else "light"]
+        self.root.configure(bg=self.tc("grid_bg"))
+        self._set_titlebar_dark(self._theme is THEMES["dark"])
+
         self._saved_width: int | None = settings["window_width"]
         self._saved_height: int | None = settings["window_height"]
 
@@ -165,9 +213,9 @@ class CalendarWindow:
         # Auto-fit state (grid: cols x rows)
         self._month_width: int = 0
         self._month_height: int = 0
-        self._grid_cols: int = self.months_before + 1 + self.months_after
+        self._grid_cols: int = 1
         self._grid_rows: int = 1
-        self._current_total_months: int = self._grid_cols * self._grid_rows
+        self._current_total_months: int = 1
         self._resize_after_id: str | None = None
 
         # Font dict for _MonthPanel — includes cell pixel dims
@@ -185,14 +233,32 @@ class CalendarWindow:
         # Panel pool + persistent shell
         self._panels: list[_MonthPanel] = []
         self._months_frame: tk.Frame | None = None
+        self._nav_buttons: list[tk.Label] = []
+        self._close_btn: tk.Label | None = None
         self._build_shell()
-        self._tooltip = _ToolTip(self.root)
+        self._tooltip = _ToolTip(
+            self.root, self.tc("tooltip_bg"), self.tc("tooltip_fg"))
         self._rebuild_months()
 
         self.root.bind("<Escape>", self._on_escape)
         self.root.bind("<Configure>", self._on_configure)
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.root.withdraw()
+
+    # ------------------------------------------------------------------
+    # Theme helper
+    # ------------------------------------------------------------------
+    def tc(self, key: str) -> str:
+        """Look up a colour from the active theme."""
+        return self._theme[key]
+
+    def _set_titlebar_dark(self, dark: bool) -> None:
+        """Use Windows DWM API to switch the title bar between dark/light."""
+        hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+        value = ctypes.c_int(1 if dark else 0)
+        # DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 build 18985+ / Win11)
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd, 20, ctypes.byref(value), ctypes.sizeof(value))
 
     # ------------------------------------------------------------------
     # Fonts
@@ -215,54 +281,121 @@ class CalendarWindow:
     # Build shell (once) — nav bar + months placeholder + footer
     # ------------------------------------------------------------------
     def _build_shell(self) -> None:
-        self._outer = tk.Frame(self.root, bg=GRID_BG)
+        self._outer = tk.Frame(self.root, bg=self.tc("grid_bg"))
         self._outer.pack(padx=6, pady=4)
 
-        # Navigation row: ◀◀  ◀  Today  ▶  ▶▶
-        nav = tk.Frame(self._outer, bg=GRID_BG)
+        # Navigation row: ◀◀◀  ◀◀  ◀  Today  ...  ▶  ▶▶  ▶▶▶  ×
+        nav = tk.Frame(self._outer, bg=self.tc("grid_bg"))
         nav.pack(fill="x", pady=(0, 2))
+        self._nav_frame = nav
 
         btn_prev_year = tk.Label(
-            nav, text="\u25C0\u25C0", font=self.font_nav, bg=GRID_BG, cursor="hand2"
+            nav, text="\u25C0\u25C0\u25C0", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
         )
         btn_prev_year.pack(side="left", padx=6)
         btn_prev_year.bind("<Button-1>", lambda _e: self._navigate_year(-1))
 
+        btn_prev_page = tk.Label(
+            nav, text="\u25C0\u25C0", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
+        )
+        btn_prev_page.pack(side="left", padx=6)
+        btn_prev_page.bind("<Button-1>", lambda _e: self._navigate_page(-1))
+
         btn_prev = tk.Label(
-            nav, text="\u25C0", font=self.font_nav, bg=GRID_BG, cursor="hand2"
+            nav, text="\u25C0", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
         )
         btn_prev.pack(side="left", padx=6)
         btn_prev.bind("<Button-1>", lambda _e: self._navigate(-1))
 
         btn_today = tk.Label(
-            nav, text="Today", font=self.font_bold, bg=GRID_BG, fg=ACCENT,
-            cursor="hand2",
+            nav, text="Today", font=self.font_bold,
+            bg=self.tc("grid_bg"), fg=self.tc("accent"), cursor="hand2",
         )
         btn_today.pack(side="left", padx=6)
         btn_today.bind("<Button-1>", lambda _e: self._go_today())
 
+        # Custom close button (×) — packed right-side first so it's rightmost
+        close_btn = tk.Label(
+            nav, text="\u00D7", font=("Segoe UI", 14),
+            fg=self.tc("close_fg"), bg=self.tc("grid_bg"), cursor="hand2",
+        )
+        close_btn.pack(side="right", padx=(0, 4))
+        close_btn.bind("<Button-1>", lambda _e: self.hide())
+        close_btn.bind("<Enter>",
+                       lambda _e: close_btn.config(fg=self.tc("close_hover")))
+        close_btn.bind("<Leave>",
+                       lambda _e: close_btn.config(fg=self.tc("close_fg")))
+        self._close_btn = close_btn
+
         btn_next_year = tk.Label(
-            nav, text="\u25B6\u25B6", font=self.font_nav, bg=GRID_BG, cursor="hand2"
+            nav, text="\u25B6\u25B6\u25B6", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
         )
         btn_next_year.pack(side="right", padx=6)
         btn_next_year.bind("<Button-1>", lambda _e: self._navigate_year(1))
 
+        btn_next_page = tk.Label(
+            nav, text="\u25B6\u25B6", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
+        )
+        btn_next_page.pack(side="right", padx=6)
+        btn_next_page.bind("<Button-1>", lambda _e: self._navigate_page(1))
+
         btn_next = tk.Label(
-            nav, text="\u25B6", font=self.font_nav, bg=GRID_BG, cursor="hand2"
+            nav, text="\u25B6", font=self.font_nav,
+            bg=self.tc("grid_bg"), fg=self.tc("btn_fg"), cursor="hand2",
         )
         btn_next.pack(side="right", padx=6)
         btn_next.bind("<Button-1>", lambda _e: self._navigate(1))
 
+        self._nav_buttons = [btn_prev_year, btn_prev_page, btn_prev, btn_today,
+                             btn_next, btn_next_page, btn_next_year]
+
         # Months frame (content filled by _rebuild_months)
-        self._months_frame = tk.Frame(self._outer, bg=GRID_BG)
+        self._months_frame = tk.Frame(self._outer, bg=self.tc("grid_bg"))
         self._months_frame.pack()
 
-        # Footer
+        # Footer row: info left, version right
+        footer = tk.Frame(self._outer, bg=self.tc("grid_bg"))
+        footer.pack(fill="x", pady=(4, 0))
+        self._footer_frame = footer
+
         self._footer_label = tk.Label(
-            self._outer, text=self._footer_text(), font=self.font_footer,
-            bg=GRID_BG, fg="#555555",
+            footer, text=self._footer_text(), font=self.font_footer,
+            bg=self.tc("grid_bg"), fg=self.tc("footer_fg"),
         )
-        self._footer_label.pack(pady=(4, 0))
+        self._footer_label.pack(side="left")
+
+        self._version_label = tk.Label(
+            footer, text=f"v{VERSION}", font=self.font_wn,
+            bg=self.tc("grid_bg"), fg=self.tc("wn_fg"),
+        )
+        self._version_label.pack(side="right")
+
+    # ------------------------------------------------------------------
+    # Apply theme to shell widgets (called after theme switch)
+    # ------------------------------------------------------------------
+    def _apply_theme(self) -> None:
+        """Recolour all persistent shell widgets and rebuild month panels."""
+        self._set_titlebar_dark(self._theme is THEMES["dark"])
+        grid_bg = self.tc("grid_bg")
+        self.root.configure(bg=grid_bg)
+        self._outer.configure(bg=grid_bg)
+        self._nav_frame.configure(bg=grid_bg)
+        for btn in self._nav_buttons:
+            btn.configure(bg=grid_bg, fg=self.tc("btn_fg"))
+        # "Today" button uses accent colour
+        self._nav_buttons[3].configure(fg=self.tc("accent"))
+        self._close_btn.configure(bg=grid_bg, fg=self.tc("close_fg"))
+        self._months_frame.configure(bg=grid_bg)
+        self._footer_frame.configure(bg=grid_bg)
+        self._footer_label.configure(bg=grid_bg, fg=self.tc("footer_fg"))
+        self._version_label.configure(bg=grid_bg, fg=self.tc("wn_fg"))
+        self._tooltip.update_colors(self.tc("tooltip_bg"), self.tc("tooltip_fg"))
+        self._rebuild_months()
 
     # ------------------------------------------------------------------
     # Rebuild month grid using pooled panels (fast reconfigure)
@@ -278,7 +411,7 @@ class CalendarWindow:
         # Grow panel pool if needed
         while len(self._panels) < total:
             self._panels.append(_MonthPanel(
-                self._months_frame, self._panel_fonts,
+                self._months_frame, self._panel_fonts, self._theme,
                 self._on_press, self._on_motion, self._on_release,
                 self._on_cell_enter, self._on_cell_leave,
             ))
@@ -327,15 +460,26 @@ class CalendarWindow:
     def _fill_panel(self, panel: "_MonthPanel", year: int, month: int,
                     today: date, sel_lo: date | None, sel_hi: date | None) -> None:
         """Reconfigure an existing panel's labels — no widget creation."""
-        panel.header.configure(text=f"{_cal.month_name[month]} {year}")
+        grid_bg = self.tc("grid_bg")
+
+        # Apply theme to structural widgets
+        panel.frame.configure(bg=grid_bg)
+        panel.header.configure(
+            text=f"{_cal.month_name[month]} {year}",
+            bg=self.tc("header_bg"), fg=self.tc("header_fg"),
+        )
+        panel.wk_header.configure(bg=grid_bg, fg=self.tc("wn_fg"))
+        for col, lbl in enumerate(panel.day_headers):
+            fg = self.tc("weekend_fg") if col >= 5 else self.tc("header_fg")
+            lbl.configure(bg=grid_bg, fg=fg)
 
         grid = month_grid(year, month)
         weeks = iso_week_numbers(year, month)
         font_bold = self.font_bold
         font_normal = self.font_normal
-        _day_colors = self._day_colors
 
         for r in range(6):
+            panel.week_nums[r].configure(bg=grid_bg, fg=self.tc("wn_fg"))
             if r < len(grid):
                 row_days = grid[r]
                 panel.week_nums[r].configure(text=weeks[r])
@@ -344,13 +488,14 @@ class CalendarWindow:
                     day = row_days[c]
                     if day is None:
                         cell.delete("all")
-                        cell.configure(bg=GRID_BG, cursor="")
+                        cell.configure(bg=grid_bg, cursor="")
                     else:
                         d = date(year, month, day)
                         is_today = d == today
                         in_sel = (sel_lo is not None and sel_lo <= d <= sel_hi)
                         h_colors = self._holiday_color_for_date(d)
-                        bgs, fg = _day_colors(is_today, c >= 5, in_sel, h_colors)
+                        bgs, fg = self._day_colors(
+                            is_today, c >= 5, in_sel, h_colors)
                         self._draw_cell(
                             cell, str(day), bgs, fg,
                             font_bold if is_today else font_normal,
@@ -363,24 +508,23 @@ class CalendarWindow:
                 for c in range(7):
                     cell = panel.day_cells[r][c]
                     cell.delete("all")
-                    cell.configure(bg=GRID_BG, cursor="")
+                    cell.configure(bg=grid_bg, cursor="")
 
     # ------------------------------------------------------------------
     # Day colour logic
     # ------------------------------------------------------------------
-    @staticmethod
-    def _day_colors(is_today: bool, is_weekend: bool, in_sel: bool,
+    def _day_colors(self, is_today: bool, is_weekend: bool, in_sel: bool,
                     holiday_colors: list[str] | None = None,
                     ) -> tuple[list[str], str]:
         if is_today:
-            return [ACCENT], "white"
+            return [self.tc("accent")], self.tc("today_fg")
         if in_sel:
-            return [SEL_BG], "black"
+            return [self.tc("sel_bg")], self.tc("sel_fg")
         if holiday_colors:
             return holiday_colors, "white"
         if is_weekend:
-            return [GRID_BG], "#CC0000"
-        return [GRID_BG], "black"
+            return [self.tc("grid_bg")], self.tc("weekend_fg")
+        return [self.tc("grid_bg")], self.tc("day_fg")
 
     # ------------------------------------------------------------------
     # Selection helpers
@@ -478,7 +622,7 @@ class CalendarWindow:
             h = int(cell["height"]) + 2
 
         if len(bg_colors) <= 1:
-            cell.configure(bg=bg_colors[0] if bg_colors else GRID_BG)
+            cell.configure(bg=bg_colors[0] if bg_colors else self.tc("grid_bg"))
         else:
             cell.configure(bg=bg_colors[0])
             n = len(bg_colors)
@@ -548,37 +692,23 @@ class CalendarWindow:
         frame = tk.Frame(dlg, padx=12, pady=8)
         frame.pack()
 
-        tk.Label(frame, text="Months before:", font=self.font_normal).grid(
-            row=0, column=0, sticky="w", pady=4,
-        )
-        spin_before = tk.Spinbox(
-            frame, from_=0, to=6, width=4, font=self.font_normal,
-        )
-        spin_before.delete(0, "end")
-        spin_before.insert(0, str(self.months_before))
-        spin_before.grid(row=0, column=1, padx=(8, 0), pady=4)
-
-        tk.Label(frame, text="Months after:", font=self.font_normal).grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        spin_after = tk.Spinbox(
-            frame, from_=0, to=6, width=4, font=self.font_normal,
-        )
-        spin_after.delete(0, "end")
-        spin_after.insert(0, str(self.months_after))
-        spin_after.grid(row=1, column=1, padx=(8, 0), pady=4)
+        dark_var = tk.BooleanVar(value=self._theme is THEMES["dark"])
+        tk.Checkbutton(
+            frame, text="Dark mode", variable=dark_var,
+            font=self.font_normal,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=4)
 
         autostart_var = tk.BooleanVar(value=get_autostart())
         tk.Checkbutton(
             frame, text="Start with Windows", variable=autostart_var,
             font=self.font_normal,
-        ).grid(row=2, column=0, columnspan=2, sticky="w", pady=4)
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=4)
 
         # --- Holiday section ---
         holiday_frame = tk.LabelFrame(
             frame, text="Holidays", font=self.font_bold, padx=8, pady=4,
         )
-        holiday_frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=(8, 0))
+        holiday_frame.grid(row=2, column=0, columnspan=2, sticky="we", pady=(8, 0))
 
         check_vars: dict[str, tk.BooleanVar] = {}
         color_labels: dict[str, tk.Label] = {}
@@ -623,36 +753,26 @@ class CalendarWindow:
 
         # --- Buttons ---
         btn_frame = tk.Frame(frame)
-        btn_frame.grid(row=4, column=0, columnspan=2, pady=(8, 0))
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=(8, 0))
 
         def on_ok() -> None:
-            try:
-                self.months_before = max(0, min(6, int(spin_before.get())))
-                self.months_after = max(0, min(6, int(spin_after.get())))
-            except ValueError:
-                return
-
             new_enabled = [k for k, v in check_vars.items() if v.get()]
             new_colors = {code: color_vals[code] for code, _ in COUNTRIES}
+            new_dark = dark_var.get()
 
             settings = load_settings()
-            settings["months_before"] = self.months_before
-            settings["months_after"] = self.months_after
+            settings["dark_mode"] = new_dark
             settings["holidays"] = new_enabled
             settings["holiday_colors"] = new_colors
             save_settings(settings)
 
+            self._theme = THEMES["dark" if new_dark else "light"]
             self._enabled_holidays = set(new_enabled)
             self._holiday_colors = new_colors
 
             set_autostart(autostart_var.get())
-            self._grid_cols = self.months_before + 1 + self.months_after
-            self._grid_rows = 1
-            self._current_total_months = self._grid_cols
-            self._saved_width = None  # reset saved size so defaults apply
-            self._saved_height = None
             dlg.destroy()
-            self._rebuild_months()
+            self._apply_theme()
 
         tk.Button(btn_frame, text="OK", width=8, command=on_ok).pack(
             side="left", padx=4,
@@ -673,6 +793,16 @@ class CalendarWindow:
             self.center_year, self.center_month = next_month(
                 self.center_year, self.center_month
             )
+        self._rebuild_months()
+
+    def _navigate_page(self, direction: int) -> None:
+        """Skip forward/back by the number of currently displayed months."""
+        steps = self._current_total_months
+        y, m = self.center_year, self.center_month
+        step_fn = next_month if direction > 0 else prev_month
+        for _ in range(steps):
+            y, m = step_fn(y, m)
+        self.center_year, self.center_month = y, m
         self._rebuild_months()
 
     def _navigate_year(self, direction: int) -> None:
@@ -743,12 +873,13 @@ class CalendarWindow:
             self._grid_cols = max(1, (self._saved_width - 24) // self._month_width)
             self._grid_rows = max(1, (self._saved_height - 50) // self._month_height)
         else:
-            self._grid_cols = self.months_before + 1 + self.months_after
+            self._grid_cols = 3
             self._grid_rows = 1
 
         self._rebuild_months()
         self.root.deiconify()
         self.root.update_idletasks()
+        self._set_titlebar_dark(self._theme is THEMES["dark"])
 
         if has_saved:
             self._position_window(override_size=(self._saved_width, self._saved_height))

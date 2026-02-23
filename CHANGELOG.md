@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.3.0
+
+### Added
+- **Dark mode** — full dark theme with switchable light/dark color dictionaries (17 theme keys); toggle via Settings checkbox; persisted across sessions
+- **Dark title bar** — Windows DWM API (`DwmSetWindowAttribute`) switches the OS-drawn title bar between dark and light mode
+- **Custom close button** — "×" label in the nav bar with red hover effect; replaces the hard-to-read `-toolwindow` close button
+- **Page navigation** — new `◀◀` / `▶▶` buttons skip forward/back by the number of currently displayed months
+- **Version display** — `v1.3.0` shown bottom-right in the footer
+- **MIT License** — open-source license file added
+- **GitHub Actions workflow** — automated `.exe` build and release on version tags
+
+### Changed
+- **Navigation layout** — `◀` / `▶` = 1 month, `◀◀` / `▶▶` = page (displayed month count), `◀◀◀` / `▶▶▶` = 1 year
+- **Calendar week header** — renamed from "Wk" to "CW"
+
+### Removed
+- **Months before/after settings** — removed from settings dialog and defaults; the resize handler already auto-fits months to window size dynamically
+
+## v1.2.0
+
+### Added
+- **Selectable holidays** — per-country holiday checkboxes (Switzerland, Germany, China) with colored day indicators and customizable colors
+
 ## v1.1.0
 
 ### Added
