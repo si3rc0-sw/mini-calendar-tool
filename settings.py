@@ -14,7 +14,8 @@ _DEFAULTS = {
     "grid_cols": None,
     "grid_rows": None,
     "holidays": [],
-    "holiday_colors": {"CH": "#FF0000", "DE": "#FFD700", "CN": "#4CAF50"},
+    "holiday_colors": {"CH": "#008000", "DE": "#0080FF", "CN": "#EBA40F"},
+    "marker_colors": ["#E74C3C", "#9B59B6", "#1ABC9C", "#F39C12"],
 }
 
 
@@ -33,6 +34,8 @@ def load_settings() -> dict:
             settings["holidays"] = [k for k in stored["holidays"] if isinstance(k, str)]
         if "holiday_colors" in stored and isinstance(stored["holiday_colors"], dict):
             settings["holiday_colors"] = dict(stored["holiday_colors"])
+        if "marker_colors" in stored and isinstance(stored["marker_colors"], list):
+            settings["marker_colors"] = [c for c in stored["marker_colors"] if isinstance(c, str)]
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
     return settings

@@ -20,7 +20,7 @@ from tkinter import colorchooser
 from holidays import COUNTRIES, holidays_by_country, holidays_for_year
 from settings import load_settings, save_settings, get_autostart, set_autostart
 
-VERSION = "1.4.1"
+VERSION = "1.5.0"
 
 # Theme colour dictionaries
 THEMES = {
@@ -109,7 +109,8 @@ class _MonthPanel:
 
     def __init__(self, parent: tk.Frame, fonts: dict, theme: dict,
                  on_press, on_motion, on_release,
-                 on_enter=None, on_leave=None) -> None:
+                 on_enter=None, on_leave=None,
+                 on_right_click=None) -> None:
         self.frame = tk.Frame(parent, bg=theme["grid_bg"])
 
         self.header = tk.Label(
@@ -164,6 +165,8 @@ class _MonthPanel:
                     cell.bind("<Enter>", on_enter)
                 if on_leave:
                     cell.bind("<Leave>", on_leave)
+                if on_right_click:
+                    cell.bind("<Button-3>", on_right_click)
                 row_cells.append(cell)
             self.day_cells.append(row_cells)
 
@@ -213,6 +216,12 @@ class CalendarWindow:
         self._holiday_colors: dict[str, str] = dict(settings.get(
             "holiday_colors", {"CH": "#FF0000", "DE": "#FFD700", "CN": "#4CAF50"}))
         self._holiday_map: dict[date, list[tuple[str, str]]] = {}
+
+        # Day markers (ephemeral, not persisted)
+        self._day_markers: dict[date, str] = {}
+        self._marker_colors: list[str] = list(settings.get(
+            "marker_colors", ["#E74C3C", "#9B59B6", "#1ABC9C", "#F39C12"]))
+        self._holidays_visible: bool = True
 
         # Auto-fit state (grid: cols x rows)
         self._month_width: int = 0
@@ -379,6 +388,20 @@ class CalendarWindow:
         )
         self._version_label.pack(side="right")
 
+        self._holiday_btn = tk.Label(
+            footer, text="Holidays", font=self.font_wn,
+            bg=self.tc("grid_bg"), fg=self.tc("accent"), cursor="hand2",
+        )
+        self._holiday_btn.pack(side="right", padx=(0, 8))
+        self._holiday_btn.bind("<Button-1>", lambda _e: self._toggle_holidays())
+
+        self._clear_btn = tk.Label(
+            footer, text="Clear", font=self.font_wn,
+            bg=self.tc("grid_bg"), fg=self.tc("footer_fg"), cursor="hand2",
+        )
+        self._clear_btn.pack(side="right", padx=(0, 8))
+        self._clear_btn.bind("<Button-1>", lambda _e: self._clear_markers())
+
     # ------------------------------------------------------------------
     # Apply theme to shell widgets (called after theme switch)
     # ------------------------------------------------------------------
@@ -398,6 +421,9 @@ class CalendarWindow:
         self._footer_frame.configure(bg=grid_bg)
         self._footer_label.configure(bg=grid_bg, fg=self.tc("footer_fg"))
         self._version_label.configure(bg=grid_bg, fg=self.tc("wn_fg"))
+        self._holiday_btn.configure(bg=grid_bg,
+            fg=self.tc("accent") if self._holidays_visible else self.tc("wn_fg"))
+        self._clear_btn.configure(bg=grid_bg, fg=self.tc("footer_fg"))
         self._tooltip.update_colors(self.tc("tooltip_bg"), self.tc("tooltip_fg"))
         self._rebuild_months()
 
@@ -418,6 +444,7 @@ class CalendarWindow:
                 self._months_frame, self._panel_fonts, self._theme,
                 self._on_press, self._on_motion, self._on_release,
                 self._on_cell_enter, self._on_cell_leave,
+                self._on_right_click,
             ))
 
         # Build month list
@@ -498,12 +525,14 @@ class CalendarWindow:
                         is_today = d == today
                         in_sel = (sel_lo is not None and sel_lo <= d <= sel_hi)
                         h_colors = self._holiday_color_for_date(d)
+                        m_color = self._day_markers.get(d)
                         bgs, fg = self._day_colors(
                             is_today, c >= 5, in_sel, h_colors)
                         self._draw_cell(
                             cell, str(day), bgs, fg,
                             font_bold if is_today else font_normal,
                             cursor="hand2",
+                            marker_color=m_color,
                         )
                         self._widget_dates[id(cell)] = d
                         self._date_widgets[d] = cell
@@ -587,11 +616,13 @@ class CalendarWindow:
             is_weekend = d.weekday() >= 5
             in_sel = sel_lo is not None and sel_lo <= d <= sel_hi
             h_colors = self._holiday_color_for_date(d)
+            m_color = self._day_markers.get(d)
             bgs, fg = self._day_colors(is_today, is_weekend, in_sel, h_colors)
             self._draw_cell(
                 cell, str(d.day), bgs, fg,
                 self.font_bold if is_today else self.font_normal,
                 cursor="hand2",
+                marker_color=m_color,
             )
 
         if self._footer_label:
@@ -601,6 +632,8 @@ class CalendarWindow:
     # Holiday colour helper
     # ------------------------------------------------------------------
     def _holiday_color_for_date(self, d: date) -> list[str] | None:
+        if not self._holidays_visible:
+            return None
         entries = self._holiday_map.get(d)
         if not entries:
             return None
@@ -616,7 +649,8 @@ class CalendarWindow:
     # Canvas cell drawing (supports multi-colour stripes)
     # ------------------------------------------------------------------
     def _draw_cell(self, cell: tk.Canvas, text: str, bg_colors: list[str],
-                   fg: str, font, cursor: str = "") -> None:
+                   fg: str, font, cursor: str = "",
+                   marker_color: str | None = None) -> None:
         cell.delete("all")
         w = cell.winfo_width()
         h = cell.winfo_height()
@@ -636,6 +670,14 @@ class CalendarWindow:
                 y2 = round((i + 1) * stripe_h)
                 cell.create_rectangle(0, y1, w, y2, fill=c, outline="")
 
+        # Marker circle (between background and text)
+        if marker_color:
+            r = min(w, h) // 2 - 1
+            cx, cy = w // 2, h // 2
+            cell.create_oval(cx - r, cy - r, cx + r, cy + r,
+                             fill=marker_color, outline="")
+            fg = "white"
+
         if text:
             cx, cy = w // 2, h // 2
             if len(bg_colors) > 1:
@@ -654,12 +696,61 @@ class CalendarWindow:
     # ------------------------------------------------------------------
     def _on_cell_enter(self, event: tk.Event) -> None:
         d = self._widget_dates.get(id(event.widget))
-        if d and d in self._holiday_map:
+        if d and self._holidays_visible and d in self._holiday_map:
             lines = [f"{name} ({country})" for name, country in self._holiday_map[d]]
             self._tooltip.show(event.widget, "\n".join(lines))
 
     def _on_cell_leave(self, _event: tk.Event) -> None:
         self._tooltip.hide()
+
+    # ------------------------------------------------------------------
+    # Right-click day marker
+    # ------------------------------------------------------------------
+    def _on_right_click(self, event: tk.Event) -> None:
+        d = self._widget_dates.get(id(event.widget))
+        if not d:
+            return
+        # If right-clicked inside a multi-day selection, target all selected days
+        sel_lo, sel_hi = self._sel_range()
+        if sel_lo and sel_hi and sel_lo != sel_hi and sel_lo <= d <= sel_hi:
+            targets = sorted(dd for dd in self._date_widgets if sel_lo <= dd <= sel_hi)
+        else:
+            targets = [d]
+
+        menu = tk.Menu(self.root, tearoff=0)
+        for color in self._marker_colors:
+            menu.add_command(
+                label="    ",
+                background=color,
+                activebackground=color,
+                command=lambda c=color: self._set_markers(targets, c))
+        if any(t in self._day_markers for t in targets):
+            menu.add_separator()
+            menu.add_command(label="Remove",
+                             command=lambda: self._remove_markers(targets))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _set_markers(self, dates: list[date], color: str) -> None:
+        for d in dates:
+            self._day_markers[d] = color
+        self._update_highlight()
+
+    def _remove_markers(self, dates: list[date]) -> None:
+        for d in dates:
+            self._day_markers.pop(d, None)
+        self._update_highlight()
+
+    def _clear_markers(self) -> None:
+        """Remove all day markers (does not affect holidays)."""
+        self._day_markers.clear()
+        self._update_highlight()
+
+    def _toggle_holidays(self) -> None:
+        """Show or hide holiday colours without changing enabled holidays."""
+        self._holidays_visible = not self._holidays_visible
+        fg = self.tc("accent") if self._holidays_visible else self.tc("wn_fg")
+        self._holiday_btn.configure(fg=fg)
+        self._update_highlight()
 
     # ------------------------------------------------------------------
     # Footer text
@@ -798,9 +889,41 @@ class CalendarWindow:
                     font=self.font_normal, anchor="w",
                 ).pack(fill="x")
 
+        # --- Marker Colors section ---
+        marker_frame = tk.LabelFrame(
+            frame, text="Marker Colors", font=self.font_bold, padx=8, pady=4,
+        )
+        marker_frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=(8, 0))
+
+        marker_vals = list(self._marker_colors)
+
+        for i, color in enumerate(marker_vals):
+            sw = tk.Label(
+                marker_frame, text="    ", bg=color,
+                relief="raised", borderwidth=1, cursor="hand2",
+            )
+            sw.grid(row=0, column=i, padx=4, pady=4)
+
+            def _make_marker_picker(idx=i, swatch=sw):
+                def _pick(_e=None):
+                    result = colorchooser.askcolor(
+                        color=marker_vals[idx], parent=dlg,
+                        title=f"Marker colour {idx + 1}")
+                    if result[1]:
+                        marker_vals[idx] = result[1]
+                        swatch.configure(bg=result[1])
+                return _pick
+
+            sw.bind("<Button-1>", _make_marker_picker())
+
+        tk.Label(
+            marker_frame, text="Right-click a day to mark it",
+            font=self.font_wn, fg="#888888",
+        ).grid(row=0, column=len(marker_vals), padx=(8, 0))
+
         # --- Buttons ---
         btn_frame = tk.Frame(frame)
-        btn_frame.grid(row=3, column=0, columnspan=2, pady=(8, 0))
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=(8, 0))
 
         def on_ok() -> None:
             new_enabled = [k for k, v in check_vars.items() if v.get()]
@@ -811,11 +934,13 @@ class CalendarWindow:
             settings["dark_mode"] = new_dark
             settings["holidays"] = new_enabled
             settings["holiday_colors"] = new_colors
+            settings["marker_colors"] = marker_vals
             save_settings(settings)
 
             self._theme = THEMES["dark" if new_dark else "light"]
             self._enabled_holidays = set(new_enabled)
             self._holiday_colors = new_colors
+            self._marker_colors = list(marker_vals)
 
             set_autostart(autostart_var.get())
             dlg.destroy()

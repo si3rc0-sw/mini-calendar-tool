@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.5.0
+
+### Added
+- **Day color markers** — right-click any day to mark it with one of 4 preset colors (circle shape); ephemeral markers are cleared on restart
+- **Multi-day marking** — select multiple days via drag, then right-click to mark the entire selection at once
+- **Clear button** — footer button removes all day markers without affecting holidays
+- **Holiday toggle** — footer button to show/hide holiday colors and tooltips without changing settings
+- **Marker Colors in Settings** — 4 configurable marker color swatches with color picker
+
+### Changed
+- **Holiday default colors** — updated to CH=green (#008000), DE=blue (#0080FF), CN=amber (#EBA40F)
+
 ## v1.4.1
 
 ### Fixed
