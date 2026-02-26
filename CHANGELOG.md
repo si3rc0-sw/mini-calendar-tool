@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.4.1
+
+### Fixed
+- **View persistence** — grid layout (columns/rows) is now saved and restored across app restarts; previously the month count reset to 1 after relaunch
+
 ## v1.4.0
 
 ### Added

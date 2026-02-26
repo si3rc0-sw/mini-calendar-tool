@@ -20,7 +20,7 @@ from tkinter import colorchooser
 from holidays import COUNTRIES, holidays_by_country, holidays_for_year
 from settings import load_settings, save_settings, get_autostart, set_autostart
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 # Theme colour dictionaries
 THEMES = {
@@ -188,10 +188,14 @@ class CalendarWindow:
 
         self._saved_width: int | None = settings["window_width"]
         self._saved_height: int | None = settings["window_height"]
+        self._saved_grid_cols: int | None = settings["grid_cols"]
+        self._saved_grid_rows: int | None = settings["grid_rows"]
 
         today = date.today()
         self.center_year = today.year
         self.center_month = today.month
+
+        self._showing = False  # suppress resize handler during show()
 
         # Selection state
         self.sel_start: date | None = None
@@ -863,6 +867,8 @@ class CalendarWindow:
     # Resize handling — auto-fit month count to window width
     # ------------------------------------------------------------------
     def _on_configure(self, event: tk.Event) -> None:
+        if self._showing:
+            return
         if event.widget is not self.root:
             return
         if self._month_width <= 0 or self._month_height <= 0:
@@ -882,7 +888,10 @@ class CalendarWindow:
         if cols != self._grid_cols or rows != self._grid_rows:
             self._grid_cols = cols
             self._grid_rows = rows
+            self._saved_grid_cols = cols
+            self._saved_grid_rows = rows
             self._rebuild_months()
+            self._persist_size()
 
     # ------------------------------------------------------------------
     # Persist window size
@@ -891,6 +900,8 @@ class CalendarWindow:
         settings = load_settings()
         settings["window_width"] = self._saved_width
         settings["window_height"] = self._saved_height
+        settings["grid_cols"] = self._grid_cols
+        settings["grid_rows"] = self._grid_rows
         save_settings(settings)
 
     # ------------------------------------------------------------------
@@ -909,28 +920,30 @@ class CalendarWindow:
         self._clear_selection()
         self.root.title(self._title())
 
-        # Compute grid once — use saved size if available, else defaults
-        has_saved = (self._saved_width is not None and self._saved_height is not None
-                     and self._month_width > 0 and self._month_height > 0)
-        if has_saved:
-            self._grid_cols = max(1, (self._saved_width - 24) // self._month_width)
-            self._grid_rows = max(1, (self._saved_height - 50) // self._month_height)
+        # Restore grid layout from saved values, or default 3×1
+        if self._saved_grid_cols is not None and self._saved_grid_rows is not None:
+            self._grid_cols = self._saved_grid_cols
+            self._grid_rows = self._saved_grid_rows
         else:
             self._grid_cols = 3
             self._grid_rows = 1
 
+        self._showing = True  # suppress resize handler during layout
         self._rebuild_months()
+        self.root.geometry("")  # clear old geometry so window fits content
         self.root.deiconify()
         self.root.update_idletasks()
         self._set_titlebar_dark(self._theme is THEMES["dark"])
-
-        if has_saved:
-            self._position_window(override_size=(self._saved_width, self._saved_height))
-        else:
-            self._position_window()
+        self._position_window()
+        self.root.update_idletasks()
+        # Delay re-enabling resize: WM configure events arrive asynchronously
+        self.root.after(200, self._end_showing)
 
         self.root.lift()
         self.root.focus_force()
+
+    def _end_showing(self) -> None:
+        self._showing = False
 
     def hide(self) -> None:
         if self._saved_width is not None and self._saved_height is not None:

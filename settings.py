@@ -11,6 +11,8 @@ _DEFAULTS = {
     "dark_mode": False,
     "window_width": None,
     "window_height": None,
+    "grid_cols": None,
+    "grid_rows": None,
     "holidays": [],
     "holiday_colors": {"CH": "#FF0000", "DE": "#FFD700", "CN": "#4CAF50"},
 }
@@ -24,7 +26,7 @@ def load_settings() -> dict:
             stored = json.load(f)
         if "dark_mode" in stored and isinstance(stored["dark_mode"], bool):
             settings["dark_mode"] = stored["dark_mode"]
-        for key in ("window_width", "window_height"):
+        for key in ("window_width", "window_height", "grid_cols", "grid_rows"):
             if key in stored and isinstance(stored[key], int):
                 settings[key] = stored[key]
         if "holidays" in stored and isinstance(stored["holidays"], list):

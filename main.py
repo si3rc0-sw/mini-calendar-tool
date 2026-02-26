@@ -22,6 +22,8 @@ def main() -> None:
         cal_win.root.after(0, cal_win.toggle)
 
     def on_exit() -> None:
+        # Persist immediately from tray thread (root.after may not execute)
+        cal_win._persist_size()
         def _quit() -> None:
             tray.stop()
             cal_win.root.destroy()
